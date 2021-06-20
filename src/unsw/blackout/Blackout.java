@@ -22,17 +22,51 @@ public class Blackout {
     }
 
     public void createDevice(String id, String type, double position) {
-        Device device = new Device(id, type, position);
-        device.intialiseType();
-        devices.add(device);
-        Collections.sort(devices);
+        if (type.equals("HandheldDevice")) {
+            HandheldDevice device = new HandheldDevice(id, type, position);
+            device.updateDelay();
+            devices.add(device);
+            Collections.sort(devices);
+        }
+        else if (type.equals("LaptopDevice")) {
+            LaptopDevice device = new LaptopDevice(id, type, position);
+            device.updateDelay();
+            devices.add(device);
+            Collections.sort(devices);
+        }
+        else if (type.equals("DesktopDevice")) {
+            DesktopDevice device = new DesktopDevice(id, type, position);
+            device.updateDelay();
+            devices.add(device);
+            Collections.sort(devices);
+        }
     }
 
     public void createSatellite(String id, String type, double height, double position) {
-        Satellite satellite = new Satellite(id, type, height, position);
-        satellite.intialiseType();
-        satellites.add(satellite);
-        Collections.sort(satellites);
+        if (type.equals("SpaceXSatellite")) {
+            SpaceXSatellite satellite = new SpaceXSatellite(id, type, height, position);
+            satellite.updateVelocity();
+            satellites.add(satellite);
+            Collections.sort(satellites);
+        }
+        else if (type.equals("BlueOriginSatellite")) {
+            BlueOriginSatellite satellite = new BlueOriginSatellite(id, type, height, position);
+            satellite.updateVelocity();
+            satellites.add(satellite);
+            Collections.sort(satellites);
+        }
+        else if (type.equals("NasaSatellite")) {
+            NasaSatellite satellite = new NasaSatellite(id, type, height, position);
+            satellite.updateVelocity();
+            satellites.add(satellite);
+            Collections.sort(satellites);
+        }
+        else if (type.equals("SovietSatellite")) {
+            SovietSatellite satellite = new SovietSatellite(id, type, height, position);
+            satellite.updateVelocity();
+            satellites.add(satellite);
+            Collections.sort(satellites);
+        }
     }
 
     public void scheduleDeviceActivation(String deviceId, LocalTime start, int durationInMinutes) {
@@ -98,9 +132,7 @@ public class Blackout {
                 for (Connection connection: satellite.getConnections()) {
                     JSONObject JSONConnection = new JSONObject();
                     JSONConnection.put("deviceId", connection.getDeviceId());
-                    // if (connection.getEndTime() != null) {
                     JSONConnection.put("endTime", connection.getEndTime());
-                    // }
                     JSONConnection.put("minutesActive", connection.getMinutesActive());
                     JSONConnection.put("satelliteId", connection.getSatelliteId());
                     JSONConnection.put("startTime", connection.getStartTime());
@@ -150,44 +182,45 @@ public class Blackout {
     
         for (int i = 0; i < tickDurationInMinutes; i++) {
             for (Satellite satellite: this.satellites) {
-                if (satellite.getType().equals("SovietSatellite")) { 
-                    if (satellite.getPosition() < 140 || satellite.getPosition() > 190) {
-                        if (satellite.getPosition() > 190 && satellite.getPosition() < 345) {
-                            satellite.setVelocity(-6000/60);
-                        }
-                        else if (satellite.getPosition() < 140 || satellite.getPosition() > 345) {
-                            satellite.setVelocity(6000/60);
-                        }
-                    }
-                }
-                double newPosition = satellite.getPosition() + 
-                    (satellite.getVelocity() / satellite.getHeight());
-                if (newPosition >= 360) {
-                    newPosition -= 360;
-                }
-                satellite.setPosition(newPosition);
+                satellite.SovietSatelliteVelocity();
+                satellite.updatePosition();
             }
+
             for (Satellite satellite: this.satellites) {
                 for (Connection connection: satellite.getConnections()) {
-                    if (connection.getEndTime() == null && connection.getMinutesActive() > 0) {
+                    if (connection.isActive() && connection.getMinutesActive() > 0) {
                         if (!connection.isValidTime(currentTime) ||
                             !MathsHelper.satelliteIsVisibleFromDevice(satellite.getPosition()
                             , satellite.getHeight(), connection.getDevice().getPosition())) {
-                            connection.setEndTime(currentTime);
-                            connection.updateConnection(false);
+                            connection.disconnect(currentTime);
                         }
                     }
                     connection.updateMinutesActive(currentTime);
                 }
             }
-            for (Satellite satellite: this.satellites) {
-                for (Device device: this.devices) {
+
+            for (Device device: this.devices) {
+                List<Double> satellitePositions = new ArrayList<>();
+                for (Satellite satellite: satellites) {
                     if (satellite.canConnect(device) && device.isValidTime(currentTime)) {
-                        satellite.connect(device, currentTime);
+                        satellitePositions.add(satellite.getPosition());
+                    }
+                }
+                if (satellitePositions.size() >= 1) {
+                    double temp = 361;
+                    for (double position: satellitePositions) {
+                        if (position < temp) {
+                            temp = position;
+                        }
+                    }
+                    for (Satellite satellite: satellites) {
+                        if (satellite.getPosition() == temp) {
+                            satellite.connect(device, currentTime);
+                        }
                     }
                 }
             }
-
+            
             // TODO: if device can connect to multiple satellites, use satellite with smallest angle
             this.currentTime = this.currentTime.plusMinutes(1);
         }

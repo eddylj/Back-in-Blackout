@@ -48,6 +48,10 @@ public class Connection implements Comparable<Connection>{
         return this.minutesActive;
     }
 
+    public double getDevicePosition() {
+        return this.device.getPosition();
+    }
+
     public void setStartTime(LocalTime startTime) {
         this.startTime = startTime;
     }
@@ -64,6 +68,18 @@ public class Connection implements Comparable<Connection>{
         this.delay = delay;
     }
 
+    public void connect(LocalTime time) {
+        startTime = time;
+        device.setConnected(true);
+        satellite.setActiveConnections(satellite.getActiveConnections() + 1);
+    }
+
+    public void disconnect(LocalTime time) {
+        endTime = time;
+        device.setConnected(false);
+        satellite.setActiveConnections(satellite.getActiveConnections() - 1);
+    }
+
     public void updateMinutesActive(LocalTime currTime) {
         if (endTime == null) {
             minutesActive = ((int) startTime.until(currTime, ChronoUnit.MINUTES)) - delay;
@@ -73,8 +89,11 @@ public class Connection implements Comparable<Connection>{
         }
     }
 
-    public void updateConnection(Boolean connected) {
-        device.setConnected(connected);
+    public Boolean isActive() {
+        if (endTime == null) {
+            return true;
+        }
+        return false;
     }
 
     public Boolean isValidTime(LocalTime currTime) {

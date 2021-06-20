@@ -18,19 +18,6 @@ public class Device implements Comparable<Device> {
         this.connected = false;
         activationTimes = new ArrayList<>();
     }
-
-    public void intialiseType() {
-        if (type.equals("HandheldDevice")) {
-            delay = 1;
-        }
-        else if (type.equals("LaptopDevice")) {
-            delay = 2;
-        }
-        else if (type.equals("DesktopDevice")) {
-            delay = 5;
-        }
-        return;
-    }    
     
     public String getId() {
         return this.id;
@@ -64,6 +51,10 @@ public class Device implements Comparable<Device> {
         this.connected = connected;
     }
 
+    public void setDelay(int delay) {
+        this.delay = delay;
+    }
+
     public void schedule(LocalTime start, int durationInMinutes) {
             ActivationTime activationTime = new ActivationTime(start, start.plusMinutes(durationInMinutes));
             activationTimes.add(activationTime);
@@ -71,7 +62,9 @@ public class Device implements Comparable<Device> {
 
     public Boolean isValidTime(LocalTime time) {
         for (ActivationTime activationTime: this.activationTimes) {
-                return activationTime.isValidTime(time);
+                if (activationTime.isValidTime(time)) {
+                    return true;
+                }
         }
         return false;
     }

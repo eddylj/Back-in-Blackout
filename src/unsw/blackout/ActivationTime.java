@@ -19,11 +19,16 @@ public class ActivationTime {
         return this.endTime;
     }
 
+    /**
+     * 
+     * @param time
+     * 
+     * Checks if the provided time is within the activation time.
+     */
     public Boolean isValidTime(LocalTime time) {
         if (time.compareTo(startTime) >= 0 && time.compareTo(endTime) <= 0) {
             return true;
         }
         return false;
     }
-
 }

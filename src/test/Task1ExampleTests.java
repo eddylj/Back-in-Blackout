@@ -70,4 +70,32 @@ public class Task1ExampleTests {
         // actually run any tests!
         plan.executeTestPlan();
     }
+    
+    @Test
+    public void testPossibleConnections() {
+        String initialWorldState = new ResponseHelper(LocalTime.of(0, 0))
+            .expectSatellite("BlueOriginSatellite", "Satellite1", 10000, 340, 141.66, 
+                new String[] { "DeviceA", "DeviceB", "DeviceC" })
+            .expectSatellite("SpaceXSatellite", "Satellite2", 10000, 341, 55.5, 
+                new String[] {"DeviceA"})
+            .expectSatellite("NasaSatellite", "Satellite3", 10000, 342, 85, 
+                new String[] {"DeviceA", "DeviceB", "DeviceC"})
+            .expectSatellite("SovietSatellite", "Satellite4", 10000, 343, 100, 
+                new String[] {"DeviceB", "DeviceC"})
+            .expectDevice("HandheldDevice", "DeviceA", 340)
+            .expectDevice("LaptopDevice", "DeviceB", 330)
+            .expectDevice("DesktopDevice", "DeviceC", 350)
+            .toString();
+
+        TestHelper plan = new TestHelper().createDevice("HandheldDevice", "DeviceA", 340)
+            .createDevice("LaptopDevice", "DeviceB", 330)
+            .createDevice("DesktopDevice", "DeviceC", 350)
+            .createSatellite("BlueOriginSatellite", "Satellite1", 10000, 340)
+            .createSatellite("SpaceXSatellite", "Satellite2", 10000, 341)
+            .createSatellite("NasaSatellite", "Satellite3", 10000, 342)
+            .createSatellite("SovietSatellite", "Satellite4", 10000, 343)
+            .showWorldState(initialWorldState);
+
+        plan.executeTestPlan();
+    }
 }

@@ -4,8 +4,6 @@ import java.time.LocalTime;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
-import java.util.Set;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -36,6 +34,18 @@ public class Blackout {
         }
         else if (type.equals("DesktopDevice")) {
             DesktopDevice device = new DesktopDevice(id, type, position);
+            device.updateDelay();
+            devices.add(device);
+            Collections.sort(devices);
+        }
+        else if (type.equals("MobileXPhone")) {
+            MobileXPhone device = new MobileXPhone(id, type, position);
+            device.updateDelay();
+            devices.add(device);
+            Collections.sort(devices);
+        }
+        else if (type.equals("AWSCloudServer")) {
+            AWSCloudServer device = new AWSCloudServer(id, type, position);
             device.updateDelay();
             devices.add(device);
             Collections.sort(devices);
@@ -150,9 +160,7 @@ public class Blackout {
         for (Device device: this.devices) {
             JSONObject JSONDevice = new JSONObject();
             JSONDevice.put("id", device.getId());
-
-            Boolean isConnected = device.getConnected();
-            JSONDevice.put("isConnected", (isConnected));
+            JSONDevice.put("isConnected", (device.getConnected()));
             JSONDevice.put("position", device.getPosition());
 
             JSONArray JSONActivationPeriods = new JSONArray();
@@ -179,49 +187,49 @@ public class Blackout {
     }
 
     public void simulate(int tickDurationInMinutes) {
-    
         for (int i = 0; i < tickDurationInMinutes; i++) {
-            for (Satellite satellite: this.satellites) {
-                satellite.SovietSatelliteVelocity();
+            // Update position of satellite
+            for (Satellite satellite: satellites) {
                 satellite.updatePosition();
             }
 
-            for (Satellite satellite: this.satellites) {
+            // Disconnect any illegible satellites and update minutes
+            for (Satellite satellite: satellites) {
                 for (Connection connection: satellite.getConnections()) {
-                    if (connection.isActive() && connection.getMinutesActive() > 0) {
-                        if (!connection.isValidTime(currentTime) ||
-                            !MathsHelper.satelliteIsVisibleFromDevice(satellite.getPosition()
-                            , satellite.getHeight(), connection.getDevice().getPosition())) {
-                            connection.disconnect(currentTime);
-                        }
-                    }
-                    connection.updateMinutesActive(currentTime);
+                    connection.updateConnection(currentTime);
                 }
             }
 
-            for (Device device: this.devices) {
-                List<Double> satellitePositions = new ArrayList<>();
-                for (Satellite satellite: satellites) {
-                    if (satellite.canConnect(device) && device.isValidTime(currentTime)) {
-                        satellitePositions.add(satellite.getPosition());
-                    }
-                }
-                if (satellitePositions.size() >= 1) {
-                    double temp = 361;
-                    for (double position: satellitePositions) {
-                        if (position < temp) {
-                            temp = position;
+            // Sort satellite ArrayList by position for device priority
+            satellites.sort(new PositionSorter());
+
+            // Connects any unconnected devices to eligible satellites
+            for (Device device: devices) {
+                // For MobileXPhones, first attempts a connection to SovietSatellites
+                // before other satellites
+                if (device instanceof MobileXPhone) {
+                    for (Satellite satellite: satellites) {
+                        if (satellite instanceof SpaceXSatellite) {
+                            satellite.updateNewConnection(device, currentTime);
                         }
                     }
-                    for (Satellite satellite: satellites) {
-                        if (satellite.getPosition() == temp) {
-                            satellite.connect(device, currentTime);
+                }
+                for (Satellite satellite: satellites) {
+                    satellite.updateNewConnection(device, currentTime);
+                }
+                // for AWSCloudServers, if there is only one unique connection, disconnects
+                if (device instanceof AWSCloudServer) {
+                    if (device.getConnectionNo() == 1) {
+                        for (Connection connection: device.getConnections()) {
+                            if (connection.isActive()) {
+                                connection.disconnect(currentTime);
+                            }
                         }
                     }
                 }
             }
-            
-            // TODO: if device can connect to multiple satellites, use satellite with smallest angle
+            // Resort satellites by satellite id
+            Collections.sort(satellites);
             this.currentTime = this.currentTime.plusMinutes(1);
         }
     }

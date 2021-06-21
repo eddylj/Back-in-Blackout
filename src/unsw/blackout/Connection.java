@@ -68,27 +68,11 @@ public class Connection implements Comparable<Connection>{
         this.delay = delay;
     }
 
-    public void connect(LocalTime time) {
-        startTime = time;
-        device.setConnected(true);
-        satellite.setActiveConnections(satellite.getActiveConnections() + 1);
-    }
-
-    public void disconnect(LocalTime time) {
-        endTime = time;
-        device.setConnected(false);
-        satellite.setActiveConnections(satellite.getActiveConnections() - 1);
-    }
-
-    public void updateMinutesActive(LocalTime currTime) {
-        if (endTime == null) {
-            minutesActive = ((int) startTime.until(currTime, ChronoUnit.MINUTES)) - delay;
-            if (minutesActive < 0) {
-                minutesActive = 0;
-            }
-        }
-    }
-
+    /**
+     * Checks if the connection is active by checking endtime.
+     * 
+     * @return true if the connection is active and endtime is null, otherwise false.
+     */
     public Boolean isActive() {
         if (endTime == null) {
             return true;
@@ -96,13 +80,72 @@ public class Connection implements Comparable<Connection>{
         return false;
     }
 
-    public Boolean isValidTime(LocalTime currTime) {
-        if (device.isValidTime(currTime)) {
-            return true;
+    /**
+     * Connects a satellite to a device.
+     * 
+     * @param time
+     */
+    public void connect(LocalTime time) {
+        startTime = time;
+        satellite.setActiveConnections(satellite.getActiveConnections() + 1);
+        device.addConnection(this);
+        device.addConnectionNo();
+        if (device instanceof AWSCloudServer && device.getConnectionNo() < 2) {
+            device.setConnected(false);
         }
-        return false;
+        else {
+            device.setConnected(true);
+        }
+        return;
     }
 
+    /**
+     * Disconnects a satellite from a device by setting the endtime.
+     * 
+     * @param time
+     */
+    public void disconnect(LocalTime time) {
+        endTime = time;
+        device.minusConnectionNo();
+        device.setConnected(false);
+        satellite.setActiveConnections(satellite.getActiveConnections() - 1);
+        return;
+    }
+
+    /**
+     * Updates the minutes active of the connection.
+     * 
+     * @param currTime
+     */
+    public void updateMinutesActive(LocalTime currTime) {
+        if (endTime == null) {
+            minutesActive = ((int) startTime.until(currTime, ChronoUnit.MINUTES)) - delay;
+            if (minutesActive < 0) {
+                minutesActive = 0;
+            }
+        }
+        return;
+    }
+
+    /**
+     * Updates connections for a new time by disconnecting the connection if 
+     * it is not eligible and updating the minutes active of the connection.
+     * 
+     * @param currentTime
+     */
+    public void updateConnection(LocalTime currentTime) {
+        if (isActive() && minutesActive > 0) {
+            if (!device.isValidTime(currentTime) ||
+                !MathsHelper.satelliteIsVisibleFromDevice(satellite.getPosition()
+                , satellite.getHeight(), device.getPosition())) {
+                disconnect(currentTime);
+            }
+        }
+        updateMinutesActive(currentTime);
+        return;
+    }
+
+    // Sorts connections by starttime and if equal, then deviceid id.
     @Override
     public int compareTo(Connection connection) {
         if (getStartTime() == null || connection.getStartTime() == null) {
@@ -114,7 +157,6 @@ public class Connection implements Comparable<Connection>{
             }
             return getDeviceId().compareTo(connection.getDeviceId());
         }
-
         return getStartTime().compareTo(connection.getStartTime());
     }
 }
